@@ -33,8 +33,9 @@ const client = new Client({
 });
 
 client.on('qr', (qr) => {
-    console.log('\n📱 WhatsApp connect karne ke liye QR scan karein:');
-    qrcode.generate(qr, { small: true });
+    // Generate the QR code in terminal
+    // { small: true } likhna bahut zaroori hai cloud server ke liye!
+    qrcode.generate(qr, { small: true }); 
 });
 
 client.on('ready', () => { console.log('✅ WhatsApp System Ready!'); });
