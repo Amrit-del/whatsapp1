@@ -23,19 +23,21 @@ io.on('connection', (socket) => {
     console.log('🌐 Ek browser (PHP page) Live connect ho gaya hai!');
 });
 
-// 🔥 EXTREME LOW-RAM OPTIMIZATION FOR RENDER (512MB LIMIT) 🔥
+// 🔥 EXTREME LOW-RAM & TIMEOUT OPTIMIZATION 🔥
 const client = new Client({
     authStrategy: new LocalAuth(), 
+    authTimeoutMs: 120000, // 🔥 Auth ke liye 120 seconds ka time diya (Slow server fix)
     puppeteer: {
         headless: true,
+        timeout: 120000, // 🔥 Puppeteer timeout badha diya
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-gpu', // GPU band kar dega (RAM bachayega)
-            '--no-first-run', // Faltu background process band
+            '--disable-gpu', 
+            '--no-first-run', 
             '--no-zygote', 
-            '--single-process', // Kam memory khayega
+            '--single-process', 
             '--disable-accelerated-2d-canvas',
             '--disable-software-rasterizer',
             '--mute-audio'
@@ -45,18 +47,24 @@ const client = new Client({
 
 client.on('qr', (qr) => {
     latestQR = qr; 
+    isConnected = false; // Scan maang raha hai matlab ready nahi hai
     qrcode.generate(qr, { small: true }); 
     console.log('✅ Naya QR Code ban gaya hai! Ise scan karne ke liye apne Render URL par jayein');
 });
 
 client.on('ready', () => { 
-    isConnected = true;
+    isConnected = true; // 🔥 Ab server message bhejne ke liye 100% ready hai
     latestQR = ""; 
     console.log('✅ WhatsApp System Ready & Running on Low RAM Mode!'); 
 });
 
 client.on('authenticated', () => { 
-    console.log('🔓 WhatsApp Authentication successful!'); 
+    console.log('🔓 WhatsApp Authentication successful! Please wait for "Ready" message...'); 
+});
+
+client.on('disconnected', (reason) => {
+    console.log('❌ WhatsApp Disconnected:', reason);
+    isConnected = false;
 });
 
 // JADUI FEATURE: QR Code Website Par
@@ -78,6 +86,12 @@ app.get('/', (req, res) => {
 
 // PHP se Message lene ki API
 app.post('/send-message', async (req, res) => {
+    // 🔥 SECURITY LOCK: Agar bot ready nahi hai, toh message reject kar do (Crash hone se bachao)
+    if (!isConnected) {
+        console.log("⚠️ Rejecting message: Bot is still loading chats in background.");
+        return res.status(503).json({ error: 'WhatsApp bot is currently starting up. Please try again in 1 minute.' });
+    }
+
     const { phone, message } = req.body;
     if (!phone || !message) return res.status(400).json({ error: 'Data missing' });
 
