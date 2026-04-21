@@ -10,54 +10,60 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors()); 
 
-// 🔥 REAL-TIME SOCKET SERVER BANANA 🔥
+// 🔥 REAL-TIME SOCKET SERVER 🔥
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-let latestQR = ""; // Naya variable QR code save karne ke liye
+let latestQR = ""; 
 let isConnected = false; 
 
-// Socket connection check
 io.on('connection', (socket) => {
     console.log('🌐 Ek browser (PHP page) Live connect ho gaya hai!');
 });
 
-// WhatsApp Client Setup
+// 🔥 EXTREME LOW-RAM OPTIMIZATION FOR RENDER (512MB LIMIT) 🔥
 const client = new Client({
     authStrategy: new LocalAuth(), 
     puppeteer: {
+        headless: true,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage'
+            '--disable-dev-shm-usage',
+            '--disable-gpu', // GPU band kar dega (RAM bachayega)
+            '--no-first-run', // Faltu background process band
+            '--no-zygote', 
+            '--single-process', // Kam memory khayega
+            '--disable-accelerated-2d-canvas',
+            '--disable-software-rasterizer',
+            '--mute-audio'
         ]
     }
 });
 
 client.on('qr', (qr) => {
-    latestQR = qr; // QR code ko variable me save kar liya
+    latestQR = qr; 
     qrcode.generate(qr, { small: true }); 
-    console.log('✅ Naya QR Code ban gaya hai! Ise scan karne ke liye https://aimers-wa-bo.onrender.com/ par jayein');
+    console.log('✅ Naya QR Code ban gaya hai! Ise scan karne ke liye apne Render URL par jayein');
 });
 
 client.on('ready', () => { 
     isConnected = true;
     latestQR = ""; 
-    console.log('✅ WhatsApp System Ready!'); 
+    console.log('✅ WhatsApp System Ready & Running on Low RAM Mode!'); 
 });
 
 client.on('authenticated', () => { 
     console.log('🔓 WhatsApp Authentication successful!'); 
 });
 
-// 🔥 JADUI FEATURE: QR Code ko Website Par Dikhana 🔥
+// JADUI FEATURE: QR Code Website Par
 app.get('/', (req, res) => {
     if (isConnected) {
-        res.send('<h1 style="color:green; text-align:center; margin-top:100px; font-family:sans-serif;">✅ WhatsApp Bot is Live and Connected! 24/7</h1>');
+        res.send('<h1 style="color:green; text-align:center; margin-top:100px; font-family:sans-serif;">✅ WhatsApp Bot is Live and Connected! (Optimized Mode)</h1>');
     } else if (latestQR) {
-        // Agar connect nahi hai, toh seedha saaf suthra Image wala QR code dikhao
         res.send(`
             <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
                 <h2 style="color:#003366;">📱 Apne Phone ke WhatsApp se ise Scan Karein</h2>
@@ -66,11 +72,11 @@ app.get('/', (req, res) => {
             </div>
         `);
     } else {
-        res.send('<h2 style="text-align:center; margin-top:100px; font-family:sans-serif;">⏳ Starting WhatsApp Bot... Please refresh in 10-15 seconds.</h2>');
+        res.send('<h2 style="text-align:center; margin-top:100px; font-family:sans-serif;">⏳ Starting WhatsApp Bot... Please refresh in 15 seconds.</h2>');
     }
 });
 
-// PHP se Manual Message lene ki API
+// PHP se Message lene ki API
 app.post('/send-message', async (req, res) => {
     const { phone, message } = req.body;
     if (!phone || !message) return res.status(400).json({ error: 'Data missing' });
@@ -83,14 +89,15 @@ app.post('/send-message', async (req, res) => {
         if (!isRegistered) return res.status(400).json({ error: 'Not on WhatsApp' });
 
         await client.sendMessage(chatId, message);
-        console.log(`✉️ Message sent to ${cleanPhone}`);
+        console.log(`✉️ Message successfully sent to ${cleanPhone}`);
         res.status(200).json({ success: true });
     } catch (error) {
+        console.error("Message bhejne me error:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
 
-// 🔥 MACRODROID (MOBILE) API 🔥
+// MACRODROID API
 app.post('/api/payment-hook', (req, res) => {
     const { sender, raw_sms } = req.body;
     let amount = 0;
