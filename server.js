@@ -23,6 +23,7 @@ io.on('connection', (socket) => {
 
 // WhatsApp Client Setup
 const client = new Client({
+    authStrategy: new LocalAuth(), // 🔥 Yeh add kiya taaki baar-baar QR scan na karna pade
     puppeteer: {
         args: [
             '--no-sandbox',
@@ -34,7 +35,7 @@ const client = new Client({
 
 client.on('qr', (qr) => {
     // Generate the QR code in terminal
-    // { small: true } likhna bahut zaroori hai cloud server ke liye!
+    // { small: true } likhna bahut zaroori hai cloud server ke liye taaki QR normal size ka aaye!
     qrcode.generate(qr, { small: true }); 
 });
 
@@ -85,10 +86,15 @@ app.post('/api/payment-hook', (req, res) => {
     res.status(200).json({ success: true });
 });
 
+// "Cannot GET /" wala error hatane ke liye
+app.get('/', (req, res) => {
+    res.send('✅ Aimers Academy WhatsApp Bot is Live and Running 24/7!');
+});
+
 client.initialize();
 
-// Dhyan dein: Ab app.listen nahi, server.listen chalega
+// 🔥 BUG FIX: Dhyan dein: Ab app.listen nahi, server.listen chalega 🔥
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
